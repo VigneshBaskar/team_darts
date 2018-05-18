@@ -9,11 +9,15 @@ import numpy as np
 # <codecell>
 
 from sklearn.model_selection import train_test_split
-import lightgbm as lgb
+from sklearn.preprocessing import LabelEncoder
+import xgboost as xgb
+import lightclf as lgb
+from sklearn.metrics import roc_auc_score
 
 # <codecell>
 
 application_train = pd.read_csv('Data/application_train.csv')
+application_test = pd.read_csv('Data/application_test.csv')
 
 # <codecell>
 
@@ -42,44 +46,56 @@ application_train[continuous_features] = application_train[continuous_features].
 
 # <codecell>
 
-for column in categorical_features:
-    application_train[column] = application_train[column].astype('category')
+application_test[categorical_features] = application_test[categorical_features].fillna(value='unk')
+application_test[continuous_features] = application_test[continuous_features].fillna(value=0)
 
 # <codecell>
 
-input_columns = application_train.columns
-input_columns = input_columns[input_columns != 'TARGET']
+for column in categorical_features:
+    application_train[column] = application_train[column].astype('category')
+    application_test[column] = application_test[column].astype('category')
+
+# <codecell>
+
+input_columns = categorical_features + continuous_features
 target_column = 'TARGET'
 
 X = application_train[input_columns]
 y = application_train[target_column]
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1234)
-
-lgb_train = lgb.Dataset(data=X_train, label=y_train)
-lgb_eval = lgb.Dataset(data=X_test, label=y_test)
-
-params = {
-        'task': 'train',
-        'boosting_type': 'gbdt',
-        'objective': 'binary',
-        'metric': {'auc'},
-        'learning_rate': 0.1,
-        'num_leaves': 23,
-        'min_data_in_leaf': 1,
-        'num_iteration': 200,
-        'verbose': 0
-}
-
-# train
-gbm = lgb.train(params,
-            lgb_train,
-            num_boost_round=50,
-            valid_sets=lgb_eval,
-            early_stopping_rounds=10)
+X_test = application_test[input_columns]
 
 # <codecell>
 
-prob = 0.2
+merged_X = pd.concat([X, X_test])
 
-print(np.sum(gbm.predict(X_test)[np.asarray(y_test==1)]>prob)/np.sum(y_test==1))
-print(np.sum(gbm.predict(X_test)[np.asarray(y_test==0)]<prob)/np.sum(y_test==0))
+# <codecell>
+
+le = LabelEncoder()
+for feature in categorical_features:
+    merged_X[feature] = le.fit_transform(merged_X[feature])
+
+# <codecell>
+
+X = merged_X[:len(X)]
+X_test = merged_X[len(X):]
+
+# <codecell>
+
+seed = 1234
+X_train, X_valid, y_train, y_valid = train_test_split(X, y, random_state=seed)
+
+# <codecell>
+
+scale_pos_weight = sum(application_train.TARGET==1)/sum(application_train.TARGET==0)
+clf = xgb.XGBClassifier(max_depth=3, n_estimators=300, learning_rate=0.05, scale_pos_weight=scale_pos_weight).fit(X_train.as_matrix(), y_train.as_matrix())
+predictions = clf.predict_proba(X_valid.as_matrix())[:,1]
+
+# <codecell>
+
+print('Area Under Curve:',roc_auc_score(y_valid.as_matrix(), predictions))
+
+# <codecell>
+
+test_predictions = clf.predict_proba(X_test.as_matrix())[:,1]
+xgb_test_predictions = pd.DataFrame({'SK_ID_CURR':application_test['SK_ID_CURR'], 'TARGET':test_predictions})
+xgb_test_predictions.to_csv('Data/xgb_submission.csv', index=False, float_format='%.8f')
