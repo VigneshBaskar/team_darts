@@ -11,7 +11,6 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
-import lightclf as lgb
 from sklearn.metrics import roc_auc_score
 
 # <codecell>
@@ -82,11 +81,11 @@ X_test = merged_X[len(X):]
 # <codecell>
 
 seed = 1234
-X_train, X_valid, y_train, y_valid = train_test_split(X, y, random_state=seed)
+X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size = 0.1, random_state=seed)
 
 # <codecell>
 
-scale_pos_weight = sum(application_train.TARGET==1)/sum(application_train.TARGET==0)
+scale_pos_weight = sum(application_train.TARGET==0)/sum(application_train.TARGET==1)
 clf = xgb.XGBClassifier(max_depth=3, n_estimators=300, learning_rate=0.05, scale_pos_weight=scale_pos_weight).fit(X_train.as_matrix(), y_train.as_matrix())
 predictions = clf.predict_proba(X_valid.as_matrix())[:,1]
 
