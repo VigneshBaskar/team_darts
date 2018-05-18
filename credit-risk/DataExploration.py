@@ -11,6 +11,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
+from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score
 
 # <codecell>
@@ -85,8 +86,22 @@ X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size = 0.1, ran
 
 # <codecell>
 
-scale_pos_weight = sum(application_train.TARGET==0)/sum(application_train.TARGET==1)
-clf = xgb.XGBClassifier(max_depth=3, n_estimators=300, learning_rate=0.05, scale_pos_weight=scale_pos_weight).fit(X_train.as_matrix(), y_train.as_matrix())
+clf = LGBMClassifier(
+        n_estimators=20000,
+        learning_rate=0.005,
+        num_leaves=70,
+        colsample_bytree=.8,
+        subsample=.9,
+        max_depth=7,
+        reg_alpha=.1,
+        reg_lambda=.1,
+        min_split_gain=.01,
+        min_child_weight=2
+    )
+    
+clf.fit(X_train, y_train, 
+        eval_set= [(X_train, y_train), (X_valid, y_valid)], 
+        eval_metric='auc', verbose=250, early_stopping_rounds=150)
 predictions = clf.predict_proba(X_valid.as_matrix())[:,1]
 
 # <codecell>
@@ -98,3 +113,7 @@ print('Area Under Curve:',roc_auc_score(y_valid.as_matrix(), predictions))
 test_predictions = clf.predict_proba(X_test.as_matrix())[:,1]
 xgb_test_predictions = pd.DataFrame({'SK_ID_CURR':application_test['SK_ID_CURR'], 'TARGET':test_predictions})
 xgb_test_predictions.to_csv('Data/xgb_submission.csv', index=False, float_format='%.8f')
+
+# <codecell>
+
+
