@@ -1,6 +1,7 @@
-donorschoose/Data
-toxic-comment/Data
-credit-risk/Data
+Data
+TestScripts/Data
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
