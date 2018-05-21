@@ -113,7 +113,3 @@ print('Area Under Curve:',roc_auc_score(y_valid.as_matrix(), predictions))
 test_predictions = clf.predict_proba(X_test.as_matrix())[:,1]
 xgb_test_predictions = pd.DataFrame({'SK_ID_CURR':application_test['SK_ID_CURR'], 'TARGET':test_predictions})
 xgb_test_predictions.to_csv('Data/xgb_submission.csv', index=False, float_format='%.8f')
-
-# <codecell>
-
-
