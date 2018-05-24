@@ -15,5 +15,3 @@ class EncodeCategoricalFeaturesInDF(object):
         for feature in categorical_features:
             df[feature] = le.fit_transform(df[feature])
         return df
-
-
